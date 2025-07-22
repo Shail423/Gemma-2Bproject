@@ -1,7 +1,6 @@
 import torch
 from transformers import AutoProcessor, Gemma3nForConditionalGeneration
 from PIL import Image
-import requests
 import time
 
 model_id = "google/gemma-3n-e2b-it"
@@ -11,21 +10,21 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 model = Gemma3nForConditionalGeneration.from_pretrained(model_id).to(device)
 processor = AutoProcessor.from_pretrained(model_id)
 
-# Sample image URL (can be replaced with your own)
-image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb"
-image = Image.open(requests.get(image_url, stream=True).raw)
+# Load your invoice image (replace 'invoice.jpg' with your file path)
+image_path = "input_images/invoice13.jpg"  # Updated with user-provided invoice image path
+image = Image.open(image_path)
 
-# Prepare prompt
+# Prepare prompt for structured JSON extraction
 messages = [
     {
         "role": "system",
-        "content": [{"type": "text", "text": "You are a helpful assistant."}]
+        "content": [{"type": "text", "text": "You are an expert at extracting structured data from documents. Return the result as a JSON object with fields: invoice_number, date, vendor, total_amount, and line_items (list of {description, quantity, unit_price, line_total})."}]
     },
     {
         "role": "user",
         "content": [
             {"type": "image", "image": image},
-            {"type": "text", "text": "Describe this image in detail."}
+            {"type": "text", "text": "Extract all invoice data and return as JSON."}
         ]
     }
 ]
@@ -41,12 +40,11 @@ inputs = processor.apply_chat_template(
 
 input_len = inputs["input_ids"].shape[-1]
 
-# Run inference
+# Run inference and time it
 start_time = time.time()
 with torch.inference_mode():
-    generation = model.generate(**inputs, max_new_tokens=100, do_sample=False)
+    generation = model.generate(**inputs, max_new_tokens=256, do_sample=False)
     generation = generation[0][input_len:]
-
 # Decode output
 decoded = processor.decode(generation, skip_special_tokens=True)
 elapsed = time.time() - start_time

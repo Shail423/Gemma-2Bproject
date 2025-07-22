@@ -1,5 +1,6 @@
 import torch
 from transformers import AutoProcessor, Gemma3nForConditionalGeneration
+import time
 
 model_id = "google/gemma-3n-e2b-it"
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -16,7 +17,7 @@ messages = [
     },
     {
         "role": "user",
-        "content": [{"type": "text", "text": "who is our current PM?"}]  # Prompt to test model.
+        "content": [{"type": "text", "text": "who is our current Prime Minister of India?"}]  # Prompt to test model.
     }
 ]
 
@@ -32,10 +33,13 @@ inputs = processor.apply_chat_template(
 input_len = inputs["input_ids"].shape[-1]
 
 # Run inference
+start_time = time.time()
 with torch.inference_mode():
     generation = model.generate(**inputs, max_new_tokens=100, do_sample=False)
     generation = generation[0][input_len:]
 
 # Decode output
 decoded = processor.decode(generation, skip_special_tokens=True)
+elapsed = time.time() - start_time
 print("Model output:", decoded)
+print(f"Inference time: {elapsed:.2f} seconds")
