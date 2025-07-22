@@ -5,8 +5,7 @@ import time
 
 model_id = "google/gemma-3n-e2b-it"
 device = "cpu"
-print("Using device:", device)
-
+print("Using device:", device)   
 # Load model and processor
 model = Gemma3nForConditionalGeneration.from_pretrained(model_id).to(device)
 processor = AutoProcessor.from_pretrained(model_id)
