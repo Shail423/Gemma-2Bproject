@@ -4,7 +4,8 @@ from PIL import Image
 import time
 
 model_id = "google/gemma-3n-e2b-it"
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"
+print("Using device:", device)
 
 # Load model and processor
 model = Gemma3nForConditionalGeneration.from_pretrained(model_id).to(device)
@@ -13,6 +14,9 @@ processor = AutoProcessor.from_pretrained(model_id)
 # Load your invoice image (replace 'invoice.jpg' with your file path)
 image_path = "input_images/invoice13.jpg"  # Updated with user-provided invoice image path
 image = Image.open(image_path)
+
+# Resize the image to 768x768 for potentially higher accuracy
+image = image.resize((768, 768))
 
 # Prepare prompt for structured JSON extraction
 messages = [
