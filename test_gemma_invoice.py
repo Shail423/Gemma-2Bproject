@@ -11,7 +11,7 @@ os.environ["OMP_NUM_THREADS"] = "8"  # Experiment with values like 4, 8, or 16
 torch.set_num_threads(8)
 
 device = torch.device("cpu")  # Explicitly use CPU
-model_id = "google/gemma-3n-e2b-it"  # Official model
+model_id = "google/gemma-3n-e2b-it"  # Official model (check if this model supports your needs)
 
 # Load the model with dynamic quantization (reduce model size and speed up inference)
 model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -31,6 +31,7 @@ image_paths = [
 
 def run_inference(image_path):
     try:
+        # Loading and processing image
         image = Image.open(image_path).convert("RGB").resize((768, 768))
         
         messages = [
