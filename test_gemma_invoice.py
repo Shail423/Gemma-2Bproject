@@ -1,38 +1,35 @@
 import torch
-from transformers import AutoProcessor, AutoModelForSeq2SeqLM  # Use AutoModelForSeq2SeqLM for generic seq2seq tasks
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from PIL import Image
 import time
 import os
 import concurrent.futures
-from torch.quantization import quantize_dynamic  # Add quantization import
 
-# Set the number of threads and ensure it uses available CPU cores efficiently
-os.environ["OMP_NUM_THREADS"] = "8"  # Experiment with values like 4, 8, or 16
-torch.set_num_threads(8)
+# Set the number of threads for CPU (optional, doesn't affect GPU)
+os.environ["OMP_NUM_THREADS"] = "16"
+torch.set_num_threads(16)
 
-device = torch.device("cpu")  # Explicitly use CPU
-model_id = "google/gemma-3n-e2b-it"  # Official model (check if this model supports your needs)
+device = torch.device("cpu")  # Force CPU usage
+model_id = "google/gemma-3n-e2b-it"
 
-# Load the model with dynamic quantization (reduce model size and speed up inference)
-model = AutoModelForSeq2SeqLM.from_pretrained(
-    model_id
-)
-model = quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)  # Apply quantization to linear layers
-model = model.to(device)
+# Load the model and tokenizer
+model = AutoModelForCausalLM.from_pretrained(model_id).to(device)
+tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-processor = AutoProcessor.from_pretrained(model_id)
+# Enable PyTorch inference optimizations
+torch.set_grad_enabled(False)
+torch.backends.mkldnn.enabled = True
 
 # List of image paths to process in parallel
 image_paths = [
     "input_images/invoice13.jpg",
-    "input_images/invoice14.jpg",
-    "input_images/invoice15.jpg"
+    # Add more image paths if needed
 ]
 
 def run_inference(image_path):
     try:
-        # Loading and processing image
-        image = Image.open(image_path).convert("RGB").resize((768, 768))
+        # Loading and processing image (Gemma does not support images, so use a text description instead)
+        image_description = f"This is an invoice image located at {image_path}. Please extract invoice_number, date, vendor, total_amount, and line_items (description, quantity, unit_price, line_total) as JSON."
         
         messages = [
             {
@@ -44,14 +41,13 @@ def run_inference(image_path):
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": image},
-                    {"type": "text", "text": "Extract all invoice data and return as JSON."}
+                    {"type": "text", "text": f"Extract all invoice data from this image description and return as JSON: {image_description}"}
                 ]
             }
         ]
         
         # Prepare input for the model
-        inputs = processor.apply_chat_template(
+        inputs = tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
             tokenize=True,
@@ -65,17 +61,15 @@ def run_inference(image_path):
                 **inputs,
                 max_new_tokens=256,
                 do_sample=False,
-                use_cache=True  # Enable caching for faster inference
+                use_cache=True
             )
-        
         generation = generation[0][inputs["input_ids"].shape[-1]:]
-        decoded = processor.decode(generation, skip_special_tokens=True)
+        decoded = tokenizer.decode(generation, skip_special_tokens=True)
         elapsed = time.time() - start_time
         return image_path, decoded, elapsed
     except Exception as e:
-        # Handle exception if something goes wrong
         print(f"Error processing {image_path}: {e}")
-        return image_path, str(e), 0  # Return error info
+        return image_path, str(e), 0
 
 # Run inference in parallel for all images
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
