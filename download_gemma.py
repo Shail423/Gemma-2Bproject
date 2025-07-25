@@ -1,12 +1,7 @@
-from transformers import AutoProcessor, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # Model ID for Gemma
 model_id = "google/gemma-3n-e2b-it"
 
-# Load the model
-model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
-print("Model loaded successfully!")
-
-# Load the processor (tokenizer, etc.)
-processor = AutoProcessor.from_pretrained(model_id)
-print("Processor (tokenizer) loaded successfully!")
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(model_id)
