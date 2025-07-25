@@ -32,6 +32,7 @@ image_paths = [
 def run_inference(image_path):
     try:
         image = Image.open(image_path).convert("RGB").resize((768, 768))
+        
         messages = [
             {
                 "role": "system",
@@ -65,17 +66,21 @@ def run_inference(image_path):
                 do_sample=False,
                 use_cache=True  # Enable caching for faster inference
             )
+        
         generation = generation[0][inputs["input_ids"].shape[-1]:]
         decoded = processor.decode(generation, skip_special_tokens=True)
         elapsed = time.time() - start_time
         return image_path, decoded, elapsed
     except Exception as e:
+        # Handle exception if something goes wrong
+        print(f"Error processing {image_path}: {e}")
         return image_path, str(e), 0  # Return error info
 
 # Run inference in parallel for all images
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
     results = list(executor.map(run_inference, image_paths))
 
+# Print results
 for image_path, decoded, elapsed in results:
     print(f"Image: {image_path}")
     print("Model output:", decoded)

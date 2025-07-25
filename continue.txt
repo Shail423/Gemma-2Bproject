@@ -1,0 +1,14 @@
+create new enviroment
+ python -m venv venv
+
+Activate the environment:
+.\venv\Scripts\activate
+
+
+Install the dependencies from the requirements.txt file:
+
+pip install -r requirements.txt
+
+commit msg
+
+Update and fix code functionality
