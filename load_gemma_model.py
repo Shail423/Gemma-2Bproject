@@ -8,4 +8,4 @@ print("Model loaded successfully!")
 
 # Load the processor (tokenizer, etc.)
 processor = AutoProcessor.from_pretrained(model_id)
-print("Processor (tokenizer) loaded successfully!") 
+print("Processor (tokenizer) loaded successfully!")

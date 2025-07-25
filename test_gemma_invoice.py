@@ -1,14 +1,10 @@
 import torch
-from transformers import AutoProcessor, Gemma3nForConditionalGeneration
 from PIL import Image
 import time
+from utils import load_model_and_processor
 
-model_id = "google/gemma-3n-e2b-it"
-device = "cpu"
-print("Using device:", device)   
-# Load model and processor
-model = Gemma3nForConditionalGeneration.from_pretrained(model_id).to(device)
-processor = AutoProcessor.from_pretrained(model_id)
+# Load model, processor, and device
+model, processor, device = load_model_and_processor()
 
 # Load your invoice image (replace 'invoice.jpg' with your file path)
 image_path = "input_images/invoice13.jpg"  # Updated with user-provided invoice image path
@@ -45,7 +41,7 @@ input_len = inputs["input_ids"].shape[-1]
 
 # Run inference and time it
 start_time = time.time()
-with torch.inference_mode():
+with torch.no_grad():
     generation = model.generate(**inputs, max_new_tokens=256, do_sample=False)
     generation = generation[0][input_len:]
 # Decode output

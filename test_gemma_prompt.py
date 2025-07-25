@@ -1,13 +1,9 @@
 import torch
-from transformers import AutoProcessor, Gemma3nForConditionalGeneration
 import time
+from utils import load_model_and_processor
 
-model_id = "google/gemma-3n-e2b-it"
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Load model and processor
-model = Gemma3nForConditionalGeneration.from_pretrained(model_id).to(device)
-processor = AutoProcessor.from_pretrained(model_id)
+# Load model, processor, and device
+model, processor, device = load_model_and_processor()
 
 # Prepare prompt (user query)
 messages = [
@@ -34,7 +30,7 @@ input_len = inputs["input_ids"].shape[-1]
 
 # Run inference
 start_time = time.time()
-with torch.inference_mode():
+with torch.no_grad():
     generation = model.generate(**inputs, max_new_tokens=100, do_sample=False)
     generation = generation[0][input_len:]
 
