@@ -1,0 +1,3 @@
+gemma-3n-E2B-it/*.safetensors !text !filter !merge !diff
+distilgpt2/*.safetensors !text !filter !merge !diff
+distilgpt2/*.bin !text !filter !merge !diff
