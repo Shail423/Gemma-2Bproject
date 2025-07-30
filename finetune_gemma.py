@@ -396,4 +396,4 @@ if __name__ == "__main__":
         print(f"📁 Model saved at: {model_path}")
         print("🎯 You can now use your fine-tuned Gemma model for invoice extraction!")
     else:
-        print("\n❌ Fine-tuning failed. Please check the error messages above.")
+        print("\n❌ Fine-tuning failed. Please check the error messages above.")       
