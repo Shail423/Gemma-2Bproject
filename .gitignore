@@ -1,14 +1,16 @@
-# Ignore Python virtual environments
-venv/
-# Ignore Python cache files
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-# Ignore Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-# Ignore environment files
-.env
-.venv
-# Ignore VSCode settings (optional)
-.vscode/ 
+# Large model files 
+*.safetensors 
+*.bin 
+*.ckpt 
+*.pth 
+*.model 
+gemma-3n-E2B-it/ 
+models/ 
+# Python cache 
+__pycache__/ 
+*.pyc 
+venv/ 
+venv2/ 
+# Logs 
+logs/ 
+*.log 
