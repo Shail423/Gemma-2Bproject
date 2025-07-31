@@ -54,7 +54,7 @@ def ensure_dataset(obj: Union[Dataset, list, Any]) -> Dataset:
         except:
             raise TypeError(f"Cannot convert {type(obj)} to Dataset")
 
-    
+        
 def preprocess_batch(batch: Dict[str, List[Any]], tokenizer, prompt_field: str, response_field: str) -> Dict[str, List[Any]]:
     """Preprocess batch with proper formatting for Gemma model"""
     texts = [
