@@ -23,7 +23,7 @@ def check_data_format(file_path):
 def gemma_fine_tuning_complete():
     print("=== GEMMA FINE-TUNING - COMPLETE FIXED VERSION ===")
     
-    # System check
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
@@ -32,7 +32,7 @@ def gemma_fine_tuning_complete():
         gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
         print(f"Available GPU memory: {gpu_memory:.1f} GB")
         
-        # Determine optimal batch size based on GPU memory
+        
         if gpu_memory >= 16:
             train_batch_size = 4
             eval_batch_size = 8
@@ -56,8 +56,8 @@ def gemma_fine_tuning_complete():
     print(f"  - Gradient accumulation: {gradient_accumulation}")
     print(f"  - Effective batch size: {train_batch_size * gradient_accumulation}")
 
-    # Use smaller model for GTX 1650 compatibility
-    model_id = "google/gemma-2b-it"  # Fixed: smaller model for your GPU
+    
+    model_id = "google/gemma-2b-it"  
     print(f"Using model: {model_id}")
 
     print("\n=== LOADING TOKENIZER ===")
@@ -72,7 +72,7 @@ def gemma_fine_tuning_complete():
 
     print("\n=== LOADING MODEL (FIXED FOR GTX 1650) ===")
     try:
-        # Method 1: Try direct GPU loading without device_map
+        
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
             torch_dtype=torch.float16,
@@ -80,7 +80,7 @@ def gemma_fine_tuning_complete():
             trust_remote_code=True
         )
         
-        # Move to GPU if available
+        
         if torch.cuda.is_available():
             model = model.to('cuda')
         
@@ -91,7 +91,7 @@ def gemma_fine_tuning_complete():
         print("Trying 4-bit quantization...")
         
         try:
-            # Method 2: 4-bit quantization for memory efficiency
+            
             from transformers.utils.quantization_config import BitsAndBytesConfig
 
             
@@ -114,7 +114,7 @@ def gemma_fine_tuning_complete():
             print("Falling back to CPU...")
             
             try:
-                # Method 3: CPU fallback
+                
                 model = AutoModelForCausalLM.from_pretrained(
                     model_id,
                     torch_dtype=torch.float32,
@@ -130,25 +130,25 @@ def gemma_fine_tuning_complete():
     train_file = "D:/Gemma-2Bproject/invoices.jsonl"
     val_file = "D:/Gemma-2Bproject/invoices_valid.jsonl"
     
-    # Check files exist
+   
     if not os.path.exists(train_file) or not os.path.exists(val_file):
         print(f"❌ Data files not found!")
         print(f"Train file exists: {os.path.exists(train_file)}")
         print(f"Validation file exists: {os.path.exists(val_file)}")
         return
     
-    # Check data format
+    
     train_fields = check_data_format(train_file)
     val_fields = check_data_format(val_file)
     
     print(f"Train file fields: {train_fields}")
     print(f"Validation file fields: {val_fields}")
     
-    # Determine field names to use
+    
     prompt_field = None
     response_field = None
     
-    # Try common field name combinations
+    
     if "prompt" in train_fields and "response" in train_fields:
         prompt_field, response_field = "prompt", "response"
     elif "input" in train_fields and "output" in train_fields:
@@ -160,7 +160,7 @@ def gemma_fine_tuning_complete():
     elif "input_text" in train_fields and "target_text" in train_fields:
         prompt_field, response_field = "input_text", "target_text"
     elif len(train_fields) >= 2:
-        # Use first two fields as fallback
+        
         prompt_field, response_field = train_fields[0], train_fields[1]
         print(f"⚠️ Using first two fields as prompt/response: {prompt_field}, {response_field}")
     else:
@@ -179,11 +179,11 @@ def gemma_fine_tuning_complete():
             }
         )
       
-        # Explicit type assertions to fix Pylance errors
+        
         raw_train_ds = dataset["train"]
         raw_val_ds = dataset["validation"]
         
-        # Ensure they are Dataset objects
+       
         if not isinstance(raw_train_ds, Dataset) or not isinstance(raw_val_ds, Dataset):
             raise TypeError("Loaded datasets are not proper Dataset objects")
         
@@ -209,7 +209,7 @@ def gemma_fine_tuning_complete():
                 for p, r in zip(batch[prompt_field], batch[response_field])
             ]
             
-            # Batch tokenization for efficiency
+            
             tokenized = tokenizer(
                 texts,
                 truncation=True,
@@ -237,11 +237,11 @@ def gemma_fine_tuning_complete():
             remove_columns=train_ds.column_names
         )
         
-        # Explicit type handling for tokenized datasets
+        
         raw_tokenized_train = tokenized_datasets["train"]
         raw_tokenized_val = tokenized_datasets["validation"]
         
-        # Ensure proper Dataset types
+        
         if not isinstance(raw_tokenized_train, Dataset) or not isinstance(raw_tokenized_val, Dataset):
             raise TypeError("Tokenized datasets are not proper Dataset objects")
         
@@ -260,42 +260,42 @@ def gemma_fine_tuning_complete():
 
     print("\n=== SETTING UP TRAINING ===")
     
-    # Create data collator for dynamic batching
+    
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
         mlm=False,
         pad_to_multiple_of=8,
     )
     
-    # Training arguments optimized for your setup
+    
     training_args = TrainingArguments(
         output_dir="./gemma-finetuned-fixed",
         
-        # Batch processing configuration
+        
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation,
         
-        # Training schedule
+        
         num_train_epochs=3,
         eval_strategy="steps",
-        eval_steps=10,  # Evaluate more frequently with small dataset
+        eval_steps=10,  
         save_strategy="steps",
         save_steps=20,
         
-        # Optimization settings
+        
         learning_rate=2e-5,
-        warmup_steps=10,  # Reduced for small dataset
+        warmup_steps=10,  
         weight_decay=0.01,
         max_grad_norm=1.0,
         
-        # Performance optimizations
+        
         fp16=True,
         dataloader_num_workers=2,
         dataloader_pin_memory=True,
         gradient_checkpointing=True,
         
-        # Logging and saving
+        
         logging_steps=5,
         logging_dir="./logs",
         report_to="none",
@@ -304,7 +304,7 @@ def gemma_fine_tuning_complete():
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         
-        # Additional optimizations
+        
         remove_unused_columns=False,
     )
 
@@ -324,19 +324,19 @@ def gemma_fine_tuning_complete():
 
     print("\n=== STARTING TRAINING ===")
     try:
-        # Training with progress monitoring
+        
         train_result = trainer.train()
         
         print("🎉 Training completed successfully!")
         print(f"Final training loss: {train_result.training_loss:.4f}")
         
-        # Save the final model
+        
         final_model_path = "./gemma-finetuned-final"
         trainer.save_model(final_model_path)
         tokenizer.save_pretrained(final_model_path)
         print(f"✅ Model saved to: {final_model_path}")
         
-        # Final evaluation
+        
         print("\n=== FINAL EVALUATION ===")
         eval_results = trainer.evaluate()
         print(f"Final evaluation loss: {eval_results['eval_loss']:.4f}")
@@ -368,26 +368,20 @@ def create_sample_data():
             }
         ]
         
-        # Create train file
+        
         with open(train_file, "w", encoding="utf-8") as f:
-            for item in sample_data * 12:  # Duplicate to get 24 training examples
+            for item in sample_data * 12:  
                 f.write(json.dumps(item) + "\n")
         
-        # Create validation file
+        
         with open(val_file, "w", encoding="utf-8") as f:
-            for item in sample_data:  # 2 validation examples
+            for item in sample_data:  
                 f.write(json.dumps(item) + "\n")
         
         print(f"✅ Sample data created: {train_file}, {val_file}")
 
 if __name__ == "__main__":
-    # Optional: Install required packages for 4-bit quantization
-    # pip install bitsandbytes accelerate
-    
-    # Uncomment this line if you need sample data
-    # create_sample_data()
-    
-    # Run the complete fine-tuning
+   
     result = gemma_fine_tuning_complete()
     
     if result and result[0] and result[1]:

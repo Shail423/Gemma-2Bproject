@@ -8,7 +8,7 @@ import os
 import json
 from typing import List, Dict, Any, Union
 
-# Force CPU usage to avoid GPU memory issues on GTX 1650
+
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 
@@ -43,18 +43,18 @@ def ensure_dataset(obj: Union[Dataset, list, Any]) -> Dataset:
     if isinstance(obj, Dataset):
         return obj
     elif isinstance(obj, list) and len(obj) > 0 and isinstance(obj[0], dict):
-        # Convert list of dicts to Dataset
+        
         keys = list(obj[0].keys())
         data_dict = {key: [item[key] for item in obj] for key in keys}
         return Dataset.from_dict(data_dict)
     else:
-        # Fallback: try to convert using Dataset.from_dict with whatever data we have
+        
         try:
             return Dataset.from_dict({"data": [str(obj)]})
         except:
             raise TypeError(f"Cannot convert {type(obj)} to Dataset")
 
-        
+
 def preprocess_batch(batch: Dict[str, List[Any]], tokenizer, prompt_field: str, response_field: str) -> Dict[str, List[Any]]:
     """Preprocess batch with proper formatting for Gemma model"""
     texts = [
@@ -78,26 +78,26 @@ def main():
     print("=== GEMMA FINE-TUNING - FINAL FIXED VERSION ===")
     print("Using CPU-only training for GTX 1650 compatibility")
     
-    # Configuration
-    model_id = "google/gemma-2b-it"  # Smaller model for CPU training
+    
+    model_id = "google/gemma-2b-it"  
     train_file = "D:/Gemma-2Bproject/invoices.jsonl"
     valid_file = "D:/Gemma-2Bproject/invoices_valid.jsonl"
     
-    # Check if data files exist
+    
     if not os.path.exists(train_file) or not os.path.exists(valid_file):
         print(f"❌ Data files not found!")
         print(f"Train file: {train_file} - Exists: {os.path.exists(train_file)}")
         print(f"Valid file: {valid_file} - Exists: {os.path.exists(valid_file)}")
         return
     
-    # Detect field names automatically
+    
     print("\n=== DETECTING DATA FIELDS ===")
     fields = detect_field_names(train_file)
     if not fields or len(fields) < 2:
         print(f"❌ Could not detect fields in {train_file}")
         return
     
-    # Determine prompt and response fields
+    
     if "prompt" in fields and "response" in fields:
         prompt_field, response_field = "prompt", "response"
     elif "input" in fields and "output" in fields:
@@ -111,8 +111,8 @@ def main():
         print(f"⚠️ Using first two fields: {prompt_field}, {response_field}")
     
     print(f"✅ Detected fields - Prompt: '{prompt_field}', Response: '{response_field}'")
+
     
-    # Load tokenizer and model
     print("\n=== LOADING TOKENIZER AND MODEL ===")
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -122,7 +122,7 @@ def main():
         
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.float32,  # CPU-compatible dtype
+            torch_dtype=torch.float32,  
             low_cpu_mem_usage=True
         )
         print("✅ Model loaded successfully on CPU!")
@@ -131,7 +131,7 @@ def main():
         print(f"❌ Error loading model/tokenizer: {e}")
         return
     
-    # Load datasets
+    
     print("\n=== LOADING DATASETS ===")
     try:
         dataset = load_dataset(
@@ -139,11 +139,11 @@ def main():
             data_files={"train": train_file, "validation": valid_file}
         )
         
-        # FIX 1 & 2: Use ensure_dataset to guarantee proper Dataset type
+        
         train_dataset = ensure_dataset(dataset["train"])
         valid_dataset = ensure_dataset(dataset["validation"])
         
-        # Safe length checking
+        
         train_size = len(train_dataset)
         valid_size = len(valid_dataset)
         
@@ -153,12 +153,12 @@ def main():
         print(f"❌ Error loading datasets: {e}")
         return
     
-    # Preprocessing
+    
     print("\n=== PREPROCESSING DATASETS ===")
     def preprocess(batch):
         return preprocess_batch(batch, tokenizer, prompt_field, response_field)
     
-    # Get columns to remove safely
+    
     columns_to_remove = safe_get_columns(train_dataset)
     
     try:
@@ -168,7 +168,7 @@ def main():
             remove_columns=columns_to_remove
         )
         
-        # FIX 3 & 4: Use ensure_dataset to guarantee proper Dataset type after mapping
+        
         tokenized_train = ensure_dataset(tokenized_datasets["train"])
         tokenized_valid = ensure_dataset(tokenized_datasets["validation"])
         
@@ -180,54 +180,54 @@ def main():
         print(f"❌ Preprocessing failed: {e}")
         return
     
-    # Training configuration
+    
     print("\n=== SETTING UP TRAINING ===")
     training_args = TrainingArguments(
         output_dir="./gemma-finetuned-cpu",
         
-        # CPU-optimized batch settings
+        
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
-        gradient_accumulation_steps=8,  # Effective batch size = 8
+        gradient_accumulation_steps=8,  
         
-        # Training schedule
+        
         num_train_epochs=3,
-        eval_strategy="epoch",  # Updated parameter name
+        eval_strategy="epoch",  
         save_strategy="epoch",
         
-        # Learning settings
+        
         learning_rate=2e-5,
         warmup_steps=10,
         weight_decay=0.01,
         
-        # CPU-specific settings
-        use_cpu=True,  # Updated parameter (replaces no_cuda)
-        fp16=False,    # Disable mixed precision for CPU
+        
+        use_cpu=True,  
+        fp16=False,    
         dataloader_num_workers=2,
         
-        # Logging and saving
+        
         logging_steps=5,
         logging_dir="./logs",
         save_total_limit=2,
         report_to="none",
         
-        # Memory optimizations
+        
         dataloader_pin_memory=False,
         remove_unused_columns=True,
     )
     
-    # Data collator
+    
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
-        mlm=False,  # Causal language modeling
+        mlm=False,  
     )
     
-    # Create trainer - now with guaranteed Dataset objects
+    
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_train,  # Guaranteed Dataset type
-        eval_dataset=tokenized_valid,   # Guaranteed Dataset type
+        train_dataset=tokenized_train,  
+        eval_dataset=tokenized_valid,   
         data_collator=data_collator,
     )
     
@@ -237,7 +237,7 @@ def main():
     print(f"  - Total epochs: {training_args.num_train_epochs}")
     print(f"  - Learning rate: {training_args.learning_rate}")
     
-    # Start training
+    
     print("\n=== STARTING TRAINING ===")
     print("⏰ Note: CPU training will be slower but stable!")
     
@@ -247,13 +247,13 @@ def main():
         print("🎉 Training completed successfully!")
         print(f"Final training loss: {train_result.training_loss:.4f}")
         
-        # Save final model
+        
         final_model_path = "./gemma-cpu-finetuned-final"
         trainer.save_model(final_model_path)
         tokenizer.save_pretrained(final_model_path)
         print(f"✅ Model saved to: {final_model_path}")
         
-        # Final evaluation
+        
         print("\n=== FINAL EVALUATION ===")
         eval_results = trainer.evaluate()
         print(f"Final evaluation loss: {eval_results['eval_loss']:.4f}")
@@ -286,15 +286,15 @@ def create_sample_data():
             }
         ]
         
-        # Create train file with duplicated data
+        
         os.makedirs(os.path.dirname(train_file), exist_ok=True)
         with open(train_file, "w", encoding="utf-8") as f:
-            for item in sample_data * 12:  # 24 training examples
+            for item in sample_data * 12:  # 
                 f.write(json.dumps(item) + "\n")
         
-        # Create validation file
+        
         with open(valid_file, "w", encoding="utf-8") as f:
-            for item in sample_data:  # 2 validation examples
+            for item in sample_data:  
                 f.write(json.dumps(item) + "\n")
         
         print(f"✅ Sample data created: {train_file}, {valid_file}")
@@ -309,8 +309,7 @@ if __name__ == "__main__":
     print("  ✅ Guaranteed Dataset objects passed to Trainer")
     print()
     
-    # Uncomment if you need sample data
-    # create_sample_data()
+    
     
     success = main()
     
