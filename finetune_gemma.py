@@ -80,7 +80,9 @@ def gemma_fine_tuning_complete():
             trust_remote_code=True
         )
         
-        
+        print("Model loaded directly with float16 and low memory useage.")
+         
+
         if torch.cuda.is_available():
             model = model.to('cuda')
         
